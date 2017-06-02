@@ -6,6 +6,8 @@ abstract class Expr {
 
 		R visitLiteralExpr(Literal expr);
 
+		R visitAssignExpr(Assign expr);
+
 		R visitUnaryExpr(Unary expr);
 
 		R visitBinaryExpr(Binary expr);
@@ -13,6 +15,8 @@ abstract class Expr {
 		R visitTernaryExpr(Ternary expr);
 
 		R visitGroupingExpr(Grouping expr);
+
+		R visitVariableExpr(Variable expr);
 
 	}
 
@@ -30,6 +34,31 @@ abstract class Expr {
 
 		protected <R> R accept(Visitor<R> visitor) {
 			return visitor.visitLiteralExpr(this);
+		}
+
+	}
+
+	protected static class Assign extends Expr {
+
+		private final Token name;
+
+		private final Expr value;
+
+		protected Assign(Token name, Expr value) {
+			this.name = name;
+			this.value = value;
+		}
+
+		public Token name() {
+			return this.name;
+		}
+
+		public Expr value() {
+			return this.value;
+		}
+
+		protected <R> R accept(Visitor<R> visitor) {
+			return visitor.visitAssignExpr(this);
 		}
 
 	}
@@ -151,6 +180,24 @@ abstract class Expr {
 
 		protected <R> R accept(Visitor<R> visitor) {
 			return visitor.visitGroupingExpr(this);
+		}
+
+	}
+
+	protected static class Variable extends Expr {
+
+		private final Token name;
+
+		protected Variable(Token name) {
+			this.name = name;
+		}
+
+		public Token name() {
+			return this.name;
+		}
+
+		protected <R> R accept(Visitor<R> visitor) {
+			return visitor.visitVariableExpr(this);
 		}
 
 	}

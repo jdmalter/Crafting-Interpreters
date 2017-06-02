@@ -1,5 +1,6 @@
 package lox;
 
+import java.util.List;
 import java.util.Objects;
 
 import lox.Expr.Binary;
@@ -8,12 +9,19 @@ import lox.Expr.Literal;
 import lox.Expr.Ternary;
 import lox.Expr.Unary;
 
-public class Interpreter implements Expr.Visitor<Object> {
+public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
-	void interpret(Expr expression) {
+	/** Maps identifiers to values. */
+	private Environment environment = new Environment();
+
+	/**
+	 * 
+	 * @param statements
+	 *            an ordered list of statements
+	 */
+	protected void interpret(List<Stmt> statements) {
 		try {
-			Object value = evaluate(expression);
-			System.out.println(stringify(value));
+			statements.forEach(this::execute);
 		} catch (RuntimeError error) {
 			Lox.runtimeError(error);
 		}
@@ -28,6 +36,71 @@ public class Interpreter implements Expr.Visitor<Object> {
 	 */
 	private Object evaluate(Expr expr) {
 		return expr.accept(this);
+	}
+
+	/**
+	 * Executes some provided statement.
+	 * 
+	 * @param stmt
+	 *            some provided statement
+	 */
+	private void execute(Stmt stmt) {
+		stmt.accept(this);
+	}
+
+	/**
+	 * 
+	 * @param statements
+	 *            some provided statements
+	 * @param environment
+	 *            Maps identifiers to values.
+	 */
+	void executeBlock(List<Stmt> statements, Environment environment) {
+		Environment previous = this.environment;
+		try {
+			this.environment = environment;
+
+			statements.forEach(this::execute);
+		} finally {
+			this.environment = previous;
+		}
+	}
+
+	@Override
+	public Void visitBlockStmt(Stmt.Block stmt) {
+		executeBlock(stmt.statements(), new Environment(environment));
+		return null;
+	}
+
+	@Override
+	public Void visitExpressionStmt(Stmt.Expression stmt) {
+		evaluate(stmt.expression());
+		return null;
+	}
+
+	@Override
+	public Void visitPrintStmt(Stmt.Print stmt) {
+		Object value = evaluate(stmt.expression());
+		System.out.println(stringify(value));
+		return null;
+	}
+
+	@Override
+	public Void visitVarStmt(Stmt.Var stmt) {
+		Object value = null;
+		if (stmt.initializer() != null) {
+			value = evaluate(stmt.initializer());
+		}
+
+		environment.define(stmt.name().lexeme(), value);
+		return null;
+	}
+
+	public Object visitAssignExpr(Expr.Assign expr) {
+		Object value = evaluate(expr.value());
+
+		environment.assign(expr.name(), value);
+		return value;
 	}
 
 	@Override
@@ -51,6 +124,11 @@ public class Interpreter implements Expr.Visitor<Object> {
 
 		// Unreachable.
 		return null;
+	}
+
+	@Override
+	public Object visitVariableExpr(Expr.Variable expr) {
+		return environment.get(expr.name());
 	}
 
 	/**
@@ -98,7 +176,7 @@ public class Interpreter implements Expr.Visitor<Object> {
 		case EQUAL_EQUAL:
 			return Objects.deepEquals(left, right);
 
-		// Comparison opeartors
+		// Comparison operators
 		case GREATER:
 			checkNumberOperands(expr.operator(), left, right);
 			return (double) left > (double) right;

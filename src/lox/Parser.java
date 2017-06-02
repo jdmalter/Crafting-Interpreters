@@ -27,15 +27,17 @@ public class Parser {
 
 	/**
 	 * 
-	 * @return An expresssion derived from the ordered list of tokens generated
-	 *         from some source code.
+	 * @return The ordered list of statements derived from the ordered list of
+	 *         tokens generated from some source code.
 	 */
-	protected Expr parse() {
-		try {
-			return expression();
-		} catch (ParseError error) {
-			return null;
+	protected List<Stmt> parse() {
+		List<Stmt> statements = new ArrayList<Stmt>();
+
+		while (!isAtEnd()) {
+			statements.add(declaration());
 		}
+
+		return statements;
 	}
 
 	/**
@@ -43,9 +45,121 @@ public class Parser {
 	 * @return A tree of comma rules.
 	 */
 	private Expr expression() {
-		return conditional();
+		return assignment();
 	}
 
+	/**
+	 * 
+	 * @return A var token followed
+	 */
+	private Stmt declaration() {
+		try {
+			if (match(TokenType.VAR)) {
+				return varDeclaration();
+			}
+
+			return statement();
+		} catch (ParseError error) {
+			synchronize();
+			return null;
+		}
+	}
+
+	/**
+	 * 
+	 * @return Either a print, block, or expression statement.
+	 */
+	private Stmt statement() {
+		if (match(TokenType.PRINT)) {
+			return printStatement();
+		}
+		if (match(TokenType.LEFT_BRACE)) {
+			return new Stmt.Block(block());
+		}
+
+		return expressionStatement();
+	}
+
+	/**
+	 * 
+	 * @return A variable statement.
+	 */
+	private Stmt varDeclaration() {
+		Token name = consume(TokenType.IDENTIFIER, "Expect varaible name.");
+
+		Expr initializer = null;
+		if (match(TokenType.EQUAL)) {
+			initializer = expression();
+		}
+
+		consume(TokenType.SEMICOLON, "Expect ',' after variable declaration.");
+		return new Stmt.Var(name, initializer);
+	}
+
+	/**
+	 * 
+	 * @return A tree of comma rules started with a print statement and followed
+	 *         by one semicolon.
+	 */
+	private Stmt printStatement() {
+		Expr value = expression();
+		consume(TokenType.SEMICOLON, "Expect ';' after value.");
+		return new Stmt.Print(value);
+	}
+
+	/**
+	 * 
+	 * @return A tree of comma rules followed by one semicolon.
+	 */
+	private Stmt expressionStatement() {
+		Expr expr = expression();
+		consume(TokenType.SEMICOLON, "Expect ';' after expression.");
+		return new Stmt.Expression(expr);
+	}
+
+	/**
+	 * 
+	 * @return A list of statements.
+	 */
+	private List<Stmt> block() {
+		List<Stmt> statements = new ArrayList<Stmt>();
+
+		while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
+			statements.add(declaration());
+		}
+
+		consume(TokenType.RIGHT_BRACE, "Expect '}' after block.");
+		return statements;
+	}
+
+	/**
+	 * 
+	 * @return A tree where the left value is a variable and the right value is
+	 *         a value possibly followed by more assignments.
+	 */
+	private Expr assignment() {
+		Expr expr = conditional();
+
+		if (match(TokenType.EQUAL)) {
+			Token equals = previous();
+			Expr value = assignment();
+
+			if (expr instanceof Expr.Variable) {
+				Token name = ((Expr.Variable) expr).name();
+				return new Expr.Assign(name, value);
+			}
+
+			error(equals, "Invalid assignment target.");
+		}
+
+		return expr;
+	}
+
+	/**
+	 * 
+	 * @return A ternary expression with a condition and trees of expression
+	 *         rules whether the condition evalutes to true or false.
+	 */
 	private Expr conditional() {
 		return ternary(this::comma, TokenType.QUESTION, TokenType.COLON);
 	}
@@ -121,6 +235,10 @@ public class Parser {
 
 		if (match(TokenType.NUMBER, TokenType.STRING)) {
 			return new Expr.Literal(previous().literal());
+		}
+
+		if (match(TokenType.IDENTIFIER)) {
+			return new Expr.Variable(previous());
 		}
 
 		if (match(TokenType.LEFT_PAREN)) {
@@ -203,6 +321,7 @@ public class Parser {
 	 * @param type
 	 *            Some token type.
 	 * @param message
+	 *            An error describing string.
 	 * @return If the token under consideration is not EOF some token type and
 	 *         equals the token type of the token under consideration is EOF the
 	 *         token under consideration, then returns the token under

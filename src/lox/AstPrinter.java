@@ -1,10 +1,12 @@
 package lox;
 
+import lox.Expr.Assign;
 import lox.Expr.Binary;
 import lox.Expr.Grouping;
 import lox.Expr.Literal;
 import lox.Expr.Ternary;
 import lox.Expr.Unary;
+import lox.Expr.Variable;
 
 public class AstPrinter implements Expr.Visitor<String> {
 
@@ -48,6 +50,16 @@ public class AstPrinter implements Expr.Visitor<String> {
 		builder.append(")");
 
 		return builder.toString();
+	}
+
+	@Override
+	public String visitVariableExpr(Variable expr) {
+		return "var " + expr.name().lexeme();
+	}
+
+	@Override
+	public String visitAssignExpr(Assign expr) {
+		return "var " + expr.name() + " = " + expr.value();
 	}
 
 }
