@@ -18,6 +18,8 @@ abstract class Expr {
 
 		R visitVariableExpr(Variable expr);
 
+		R visitLogicalExpr(Logical expr);
+
 	}
 
 	protected static class Literal extends Expr {
@@ -198,6 +200,38 @@ abstract class Expr {
 
 		protected <R> R accept(Visitor<R> visitor) {
 			return visitor.visitVariableExpr(this);
+		}
+
+	}
+
+	protected static class Logical extends Expr {
+
+		private final Expr left;
+
+		private final Token operator;
+
+		private final Expr right;
+
+		protected Logical(Expr left, Token operator, Expr right) {
+			this.left = left;
+			this.operator = operator;
+			this.right = right;
+		}
+
+		public Expr left() {
+			return this.left;
+		}
+
+		public Token operator() {
+			return this.operator;
+		}
+
+		public Expr right() {
+			return this.right;
+		}
+
+		protected <R> R accept(Visitor<R> visitor) {
+			return visitor.visitLogicalExpr(this);
 		}
 
 	}

@@ -4,6 +4,7 @@ import lox.Expr.Assign;
 import lox.Expr.Binary;
 import lox.Expr.Grouping;
 import lox.Expr.Literal;
+import lox.Expr.Logical;
 import lox.Expr.Ternary;
 import lox.Expr.Unary;
 import lox.Expr.Variable;
@@ -38,6 +39,11 @@ public class AstPrinter implements Expr.Visitor<String> {
 	@Override
 	public String visitGroupingExpr(Grouping expr) {
 		return parenthesize("group", expr.expression());
+	}
+
+	@Override
+	public String visitLogicalExpr(Logical expr) {
+		return parenthesize(expr.operator().lexeme(), expr.left(), expr.right());
 	}
 
 	private String parenthesize(String name, Expr... exprs) {

@@ -6,8 +6,11 @@ import java.util.Objects;
 import lox.Expr.Binary;
 import lox.Expr.Grouping;
 import lox.Expr.Literal;
+import lox.Expr.Logical;
 import lox.Expr.Ternary;
 import lox.Expr.Unary;
+import lox.Stmt.If;
+import lox.Stmt.While;
 
 public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
@@ -79,6 +82,16 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 	}
 
 	@Override
+	public Void visitIfStmt(If stmt) {
+		if (isTrue(evaluate(stmt.condition()))) {
+			execute(stmt.thenBranch());
+		} else if (stmt.elseBranch() != null) {
+			execute(stmt.elseBranch());
+		}
+		return null;
+	}
+
+	@Override
 	public Void visitPrintStmt(Stmt.Print stmt) {
 		Object value = evaluate(stmt.expression());
 		System.out.println(stringify(value));
@@ -93,6 +106,14 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 		}
 
 		environment.define(stmt.name().lexeme(), value);
+		return null;
+	}
+
+	@Override
+	public Void visitWhileStmt(While stmt) {
+		while (isTrue(evaluate(stmt.condition()))) {
+			execute(stmt.body());
+		}
 		return null;
 	}
 
@@ -257,6 +278,23 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 	@Override
 	public Object visitGroupingExpr(Grouping expr) {
 		return evaluate(expr.expression());
+	}
+
+	@Override
+	public Object visitLogicalExpr(Logical expr) {
+		Object left = evaluate(expr.left());
+
+		if (expr.operator().type() == TokenType.OR) {
+			if (isTrue(left)) {
+				return left;
+			}
+		} else {
+			if (!isTrue(left)) {
+				return left;
+			}
+		}
+
+		return evaluate(expr.right());
 	}
 
 }
